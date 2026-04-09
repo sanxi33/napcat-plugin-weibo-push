@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "commandPrefix": "球鳖",
+  "userId": "",
+  "requestTimeoutMs": 10000,
+  "pollMinutes": 240,
+  "adminQqList": [],
+  "pushStatePath": "data/weibo-push-state.json",
+  "weiboCookieFile": "",
+  "weiboCookie": "",
+  "weiboReaderScript": "./scripts/weibo_reader.py"
+}

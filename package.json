@@ -1,0 +1,28 @@
+{
+  "name": "napcat-plugin-weibo-push",
+  "plugin": "weibo-push",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.mjs",
+  "description": "微博查询与定时推送插件",
+  "author": "sanxi",
+  "license": "MIT",
+  "keywords": [
+    "napcat",
+    "plugin",
+    "weibo",
+    "social",
+    "notifications"
+  ],
+  "napcat": {
+    "tags": [
+      "通知",
+      "社交"
+    ],
+    "minVersion": "4.14.0",
+    "homepage": "https://github.com/sanxi33/napcat-plugin-weibo-push"
+  },
+  "dependencies": {
+    "napcat-types": "0.0.16"
+  }
+}

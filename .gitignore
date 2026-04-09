@@ -1,0 +1,16 @@
+node_modules/
+.vscode/*
+!.vscode/mcp.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+logs
+*.log
+.env
+.env.local
+.env.*.local
+config.json
+*.tmp
+*.temp
