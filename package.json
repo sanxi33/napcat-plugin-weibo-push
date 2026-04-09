@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "main": "index.mjs",
-  "description": "微博查询与定时推送插件",
+  "description": "NapCat 微博查询与推送插件",
   "author": "sanxi",
   "license": "MIT",
   "keywords": [

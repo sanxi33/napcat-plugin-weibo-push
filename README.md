@@ -42,6 +42,11 @@ py -3 scripts/weibo_reader.py
 }
 ```
 
+- `userId`：目标微博 UID
+- `adminQqList`：可控制本群推送开关的管理员 QQ 列表
+- `weiboCookieFile` / `weiboCookie`：可选，抓取稳定性更好
+- `weiboReaderScript`：默认使用仓库内置脚本
+
 ## 安装
 
 1. 安装 Python，并确保 `py -3` 可用
@@ -49,6 +54,15 @@ py -3 scripts/weibo_reader.py
 3. 下载当前仓库 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 中的 `napcat-plugin-weibo-push.zip`
 4. 在 NapCat 插件管理中导入压缩包
 5. 配置 `userId`、Cookie 和管理员 QQ
+
+## 发布产物
+
+发布包包含：
+
+- `index.mjs`
+- `package.json`
+- `requirements.txt`
+- `scripts/weibo_reader.py`
 
 ## 已知限制
 
