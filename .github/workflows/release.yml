@@ -53,6 +53,7 @@ jobs:
           PLUGIN_NAME: napcat-plugin-weibo-push
         shell: bash
         run: |
+          mkdir -p release
           cp index.mjs release/
           cp package.json release/
           cd release
