@@ -1,88 +1,119 @@
-# napcat-plugin-music-share
+# napcat-plugin-weibo-push
 
-一个为 NapCat 设计的音乐分享与歌词查询插件。无需自行申请 API Key，安装后即可在群聊中通过命令快速分享音乐卡片或查询歌词。
+一个用于 NapCat 的微博查询与推送插件。支持在群聊中查看指定微博账号的最新内容，并可定时将新微博推送至已启用的群组。
 
 ## 适用场景
 
-- 在群聊中快速分享网易云音乐歌曲
-- 查询歌曲歌词并发送到聊天窗口
-- 开箱即用，无需额外配置第三方 API
+- 监控特定微博账号的动态更新
+- 在群聊中快速获取最新微博列表
+- 自动将新发布的微博推送至 QQ 群
 
 ## 环境要求
 
-- 已部署 NapCat，并了解如何导入插件包 (`.zip`)
-- 无需额外依赖或 API 密钥
+- 已部署 NapCat，了解如何导入插件包 (`.zip`)
+- 目标微博用户的数字 UID（非昵称）
+- （可选但推荐）微博 Cookie 以提升抓取稳定性
 
 ## 安装步骤
 
 ### 1. 下载插件
 
-前往 [Releases](https://github.com/sanxi33/napcat-plugin-music-share/releases) 页面，下载最新版本的 `napcat-plugin-music-share.zip`。
+前往 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 页面，下载最新版本的 `napcat-plugin-weibo-push.zip`。
 
 ### 2. 导入 NapCat
 
-在 NapCat 的插件管理界面中导入下载的 zip 文件，并启用插件。
+在 NapCat 的插件管理界面中导入 zip 文件，并启用插件。
 
-### 3. 默认配置
+### 3. 最小化配置示例
 
-插件首次运行将使用以下默认配置：
+首次使用时，建议使用以下基础配置模板：
 
 ```json
 {
   "enabled": true,
   "commandPrefix": "/",
-  "requestTimeoutMs": 8000
+  "userId": "1195242865",
+  "requestTimeoutMs": 10000,
+  "pollMinutes": 240,
+  "adminQqList": "123456789",
+  "pushStatePath": "data/weibo-push-state.json",
+  "weiboCookieFile": "",
+  "weiboCookie": "",
+  "weiboReaderScript": "./scripts/weibo_reader.py"
 }
 ```
 
-可根据需要修改 `commandPrefix`（命令前缀）和 `requestTimeoutMs`（请求超时时间）。
+关键配置项说明：
 
-> 提示：若将 `commandPrefix` 设置为空字符串，则可以不使用前缀直接输入命令。
+- `userId`：目标微博用户的数字 UID
+- `adminQqList`：管理员 QQ 号，多个使用英文逗号分隔
+- `weiboCookieFile` 或 `weiboCookie`：填写 Cookie 可显著提高数据抓取稳定性
+
+> 注：`weiboReaderScript` 路径保持默认即可，无需修改。
 
 ## 使用方法
 
-### 点歌
+### 查询微博
 
 ```
-/点歌 稻香
-/来一首 晴天
-/播放 夜曲
+/微博
+/微博列表
+/最新微博
+/第1条微博
 ```
 
-### 查询歌词
+### 群推送控制（仅群管理员可用）
 
 ```
-/查看歌词 七里香
-/歌词 晴天
-/查歌词 稻香
+/开启微博推送
+/关闭微博推送
 ```
 
-命令中的前缀取决于你在配置中设置的 `commandPrefix` 值。
+命令前缀取决于配置中的 `commandPrefix` 设置。
 
 ## 验证安装
 
-发送以下命令测试插件是否正常工作：
+按以下顺序测试插件是否正常工作：
 
-```
-/点歌 稻香
-/查看歌词 晴天
-```
+1. 配置正确的 `userId`
+2. 发送命令 `/微博` 检查是否返回微博列表
+3. 发送命令 `/第1条微博` 查看详情内容
+4. 在群内发送 `/开启微博推送` 启用定时推送
 
-若返回音乐分享卡片或歌词文本，即表示插件已成功运行。
+若步骤 2 成功返回列表，则说明插件核心功能运行正常。
 
 ## 快捷安装链接
 
 NapCat 版本 ≥ `4.15.19` 时，可点击下方按钮快速跳转至插件安装页面：
 
-<a href="https://napneko.github.io/napcat-plugin-index?pluginId=napcat-plugin-music-share" target="_blank">
+<a href="https://napneko.github.io/napcat-plugin-index?pluginId=napcat-plugin-weibo-push" target="_blank">
   <img src="https://github.com/NapNeko/napcat-plugin-index/blob/pages/button.png?raw=true" alt="在 NapCat WebUI 中打开" width="170">
 </a>
 
+## 故障排查
+
+插件的微博抓取功能依赖仓库自带的 `scripts/weibo_reader.py` 脚本，内部会执行 `py -3 scripts/weibo_reader.py` 命令。
+
+若遇到类似以下报错：
+
+- `'py' 不是内部或外部命令`
+- `ModuleNotFoundError: No module named 'requests'`
+- `weibo_reader_failed`
+
+请执行以下排查步骤：
+
+1. 确认系统可执行 `py -3` 命令
+2. 安装所需依赖：
+   ```bash
+   py -3 -m pip install requests
+   ```
+3. 重启 NapCat 并重新启用插件
+
 ## 已知限制
 
-- 插件依赖公开的第三方接口，若上游服务调整可能导致功能异常，届时需更新插件
-- 音乐卡片的渲染效果受 QQ 客户端及适配器能力影响
-- 本插件仅提供音乐信息分享与歌词查询，不具备本地播放控制功能
+- 依赖微博页面及接口的可访问性
+- 无有效 Cookie 时，部分微博账号内容可能无法正常抓取
+- 本插件仅负责内容查询与推送，不涉及微博账号管理或互动操作
 
 ## License
 
