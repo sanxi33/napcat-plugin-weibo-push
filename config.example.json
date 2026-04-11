@@ -7,6 +7,5 @@
   "adminQqList": [],
   "pushStatePath": "data/weibo-push-state.json",
   "weiboCookieFile": "",
-  "weiboCookie": "",
-  "weiboReaderScript": "./scripts/weibo_reader.py"
+  "weiboCookie": ""
 }

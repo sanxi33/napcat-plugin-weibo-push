@@ -1,15 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { execFile } from 'child_process';
-import { fileURLToPath } from 'url';
 
 var EventType = ((EventType2) => {
   EventType2.MESSAGE = 'message';
   return EventType2;
 })(EventType || {});
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const MOBILE_UA = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36';
+const DESKTOP_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
 const DEFAULT_CONFIG = {
   enabled: true,
@@ -20,8 +18,7 @@ const DEFAULT_CONFIG = {
   adminQqList: [],
   pushStatePath: 'data/weibo-push-state.json',
   weiboCookie: '',
-  weiboCookieFile: '',
-  weiboReaderScript: './scripts/weibo_reader.py'
+  weiboCookieFile: ''
 };
 
 export let plugin_config_ui = [];
@@ -39,16 +36,24 @@ function sanitizeConfig(raw) {
   out.userId = String(out.userId || '').trim();
   out.requestTimeoutMs = Math.max(1000, Math.min(30000, Number(out.requestTimeoutMs) || 10000));
   out.pollMinutes = Math.max(1, Math.min(720, Number(out.pollMinutes) || 240));
-  out.adminQqList = Array.isArray(out.adminQqList) ? out.adminQqList.map((item) => String(item)) : [];
+  out.adminQqList = Array.isArray(out.adminQqList)
+    ? out.adminQqList.map((item) => String(item).trim()).filter(Boolean)
+    : String(out.adminQqList || '').split(',').map((item) => item.trim()).filter(Boolean);
   out.pushStatePath = String(out.pushStatePath || 'data/weibo-push-state.json');
-  out.weiboCookie = String(out.weiboCookie || '');
-  out.weiboCookieFile = String(out.weiboCookieFile || '');
-  out.weiboReaderScript = String(out.weiboReaderScript || DEFAULT_CONFIG.weiboReaderScript).trim();
+  out.weiboCookie = String(out.weiboCookie || '').trim();
+  out.weiboCookieFile = String(out.weiboCookieFile || '').trim();
   return out;
 }
 
 function normalize(value) {
   return String(value || '').trim().toLowerCase().replace(/[！!。,.，？?；;：:“”"'`~·]/g, '').replace(/\s+/g, '');
+}
+
+function stripPrefix(text) {
+  const trimmed = String(text || '').trim();
+  if (!currentConfig.commandPrefix) return trimmed;
+  if (trimmed.startsWith(currentConfig.commandPrefix)) return trimmed.slice(currentConfig.commandPrefix.length).trim();
+  return trimmed;
 }
 
 function isAdmin(userId) {
@@ -89,30 +94,150 @@ function resolveCookie() {
   return '';
 }
 
-function resolveWeiboReaderScript() {
-  if (path.isAbsolute(currentConfig.weiboReaderScript)) return currentConfig.weiboReaderScript;
-  return path.resolve(__dirname, currentConfig.weiboReaderScript);
+function buildWeiboHeaders(cookie, mobile = true) {
+  return {
+    'User-Agent': mobile ? MOBILE_UA : DESKTOP_UA,
+    Accept: 'application/json,text/plain,*/*',
+    Referer: mobile ? 'https://m.weibo.cn/' : 'https://weibo.com/',
+    ...(cookie ? { Cookie: cookie } : {})
+  };
 }
 
-async function runWeiboReader(limit = 10) {
-  return await new Promise((resolve, reject) => {
-    const cookie = resolveCookie();
-    const args = [resolveWeiboReaderScript(), '--uid', currentConfig.userId, '--limit', String(limit)];
-    if (cookie) args.push('--cookie', cookie);
-    const pyArgs = ['-3', ...args];
-    execFile('py', pyArgs, { timeout: currentConfig.requestTimeoutMs + 5000, windowsHide: true, maxBuffer: 1024 * 1024 * 5 }, (err, stdout, stderr) => {
-      if (err) return reject(new Error(stderr || err.message || 'weibo_reader_failed'));
-      try {
-        resolve(JSON.parse(stdout));
-      } catch (error) {
-        reject(new Error(`weibo_reader_parse_failed:${String(error)}|${String(stdout).slice(0, 120)}`));
-      }
-    });
-  });
+async function fetchText(url, headers) {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort(), currentConfig.requestTimeoutMs + 5000);
+  try {
+    const response = await fetch(url, { headers, signal: controller.signal });
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`http_${response.status}${text ? `:${text.slice(0, 120)}` : ''}`);
+    }
+    return text;
+  } finally {
+    clearTimeout(timerId);
+  }
+}
+
+async function fetchJson(url, headers) {
+  const text = await fetchText(url, headers);
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`json_parse_failed:${String(error)}|${text.slice(0, 120)}`);
+  }
 }
 
 function toPlainText(html) {
   return String(html || '').replace(/<br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+}
+
+function parseWeiboPost(raw, fallbackUid) {
+  const id = String(raw?.id || raw?.mid || '');
+  const bid = String(raw?.bid || raw?.mblogid || '');
+  const uid = String(raw?.user?.id || fallbackUid || '');
+  return {
+    id,
+    bid,
+    created_at: raw?.created_at,
+    text_raw: toPlainText(raw?.text_raw || raw?.text || ''),
+    reposts_count: raw?.reposts_count,
+    comments_count: raw?.comments_count,
+    attitudes_count: raw?.attitudes_count,
+    source: raw?.source,
+    url: id ? `https://m.weibo.cn/detail/${id}` : (uid && bid ? `https://weibo.com/${uid}/${bid}` : ''),
+    isTop: raw?.isTop === 1 || raw?.isTop === true,
+    pics: raw?.pics || [],
+    retweeted_status: raw?.retweeted_status || null
+  };
+}
+
+async function fetchUserPostsMobile(uid, limit, cookie) {
+  const containerId = `107603${uid}`;
+  let page = 1;
+  const maxPages = Math.max(3, Math.ceil(limit / 10) + 2);
+  const posts = [];
+  let userInfo = {};
+
+  while (posts.length < limit && page <= maxPages) {
+    const url = `https://m.weibo.cn/api/container/getIndex?containerid=${encodeURIComponent(containerId)}&page_type=03&page=${page}`;
+    const payload = await fetchJson(url, buildWeiboHeaders(cookie, true));
+    if (payload?.ok !== 1 && payload?.ok !== true) {
+      throw new Error(`m_api_not_ok:${String(payload?.ok)}`);
+    }
+
+    const data = payload?.data || {};
+    if (!Object.keys(userInfo).length) userInfo = data.userInfo || {};
+    const cards = data.cards || [];
+    if (!cards.length) break;
+
+    let newCount = 0;
+    for (const card of cards) {
+      if (card?.card_type !== 9 || !card?.mblog) continue;
+      posts.push(parseWeiboPost(card.mblog, uid));
+      newCount++;
+      if (posts.length >= limit) break;
+    }
+
+    if (newCount === 0) break;
+    page++;
+  }
+
+  return {
+    user: {
+      uid: String(userInfo?.id || uid),
+      screen_name: userInfo?.screen_name,
+      description: userInfo?.description,
+      followers_count: userInfo?.followers_count,
+      follow_count: userInfo?.follow_count
+    },
+    posts: posts.slice(0, limit)
+  };
+}
+
+function extractXsrfToken(cookie) {
+  return (String(cookie || '').match(/XSRF-TOKEN=([^;]+)/) || [])[1] || '';
+}
+
+async function fetchUserPostsAjax(uid, limit, cookie) {
+  if (!cookie) throw new Error('missing_weibo_cookie');
+
+  const headers = {
+    ...buildWeiboHeaders(cookie, false),
+    Referer: `https://weibo.com/u/${uid}`
+  };
+  const xsrf = extractXsrfToken(cookie);
+  if (xsrf) headers['x-xsrf-token'] = xsrf;
+
+  const url = `https://weibo.com/ajax/statuses/mymblog?uid=${encodeURIComponent(uid)}&page=1&feature=0`;
+  const payload = await fetchJson(url, headers);
+  const data = payload?.data || {};
+  const list = data.list || [];
+  const user = (list[0]?.user || {});
+
+  return {
+    user: {
+      uid: String(user?.id || uid),
+      screen_name: user?.screen_name,
+      description: user?.description,
+      followers_count: user?.followers_count,
+      follow_count: user?.follow_count
+    },
+    posts: list.slice(0, limit).map((item) => parseWeiboPost(item, uid))
+  };
+}
+
+async function fetchUserPosts(uid, limit) {
+  const cookie = resolveCookie();
+  try {
+    return await fetchUserPostsMobile(uid, limit, cookie);
+  } catch (mobileError) {
+    if (!cookie) throw mobileError;
+    try {
+      return await fetchUserPostsAjax(uid, limit, cookie);
+    } catch (ajaxError) {
+      throw new Error(`weibo_fetch_failed:${String(ajaxError?.message || ajaxError)}|mobile:${String(mobileError?.message || mobileError)}`);
+    }
+  }
 }
 
 function formatTs(ts) {
@@ -128,7 +253,7 @@ function splitWeiboForwardText(text) {
   if (idx < 0) return { comment: raw, source: '' };
   return {
     comment: raw.slice(0, idx).trim(),
-    source: raw.slice(idx + 3).trim(),
+    source: raw.slice(idx + 3).trim()
   };
 }
 
@@ -167,9 +292,7 @@ function extractWeiboImageUrls(post) {
   const urls = [];
   const add = (url) => {
     const s = String(url || '').trim();
-    if (!s) return;
-    if (!/^https?:\/\//i.test(s)) return;
-    if (urls.includes(s)) return;
+    if (!s || !/^https?:\/\//i.test(s) || urls.includes(s)) return;
     urls.push(s);
   };
 
@@ -177,8 +300,7 @@ function extractWeiboImageUrls(post) {
     add(pic?.largest?.url || pic?.mw2000?.url || pic?.original?.url || pic?.large?.url || pic?.large?.url_ori || pic?.url || pic?.pic_big?.url);
   }
 
-  const retweeted = post?.retweeted_status;
-  for (const pic of (retweeted?.pics || [])) {
+  for (const pic of (post?.retweeted_status?.pics || [])) {
     add(pic?.largest?.url || pic?.mw2000?.url || pic?.original?.url || pic?.large?.url || pic?.large?.url_ori || pic?.url || pic?.pic_big?.url);
   }
 
@@ -189,18 +311,11 @@ async function fetchWeiboStatusById(id) {
   try {
     const sid = String(id || '').trim();
     if (!sid) return null;
-
     const cookie = resolveCookie();
-    const headers = {
-      'User-Agent': 'Mozilla/5.0',
-      Referer: 'https://weibo.com/',
-      Accept: 'application/json, text/plain, */*',
-      ...(cookie ? { Cookie: cookie } : {}),
-    };
-
-    const response = await fetch(`https://weibo.com/ajax/statuses/show?id=${encodeURIComponent(sid)}`, { headers });
-    if (!response.ok) return null;
-    return await response.json();
+    return await fetchJson(`https://weibo.com/ajax/statuses/show?id=${encodeURIComponent(sid)}`, {
+      ...buildWeiboHeaders(cookie, false),
+      Referer: 'https://weibo.com/'
+    });
   } catch {
     return null;
   }
@@ -214,9 +329,7 @@ async function fetchWeiboImageUrlsById(id) {
     const urls = [];
     const add = (url) => {
       const s = String(url || '').trim();
-      if (!s) return;
-      if (!/^https?:\/\//i.test(s)) return;
-      if (urls.includes(s)) return;
+      if (!s || !/^https?:\/\//i.test(s) || urls.includes(s)) return;
       urls.push(s);
     };
 
@@ -229,8 +342,8 @@ async function fetchWeiboImageUrlsById(id) {
 
     const walk = (status, depth = 0) => {
       if (!status || depth > 3) return;
-      collectPicInfos(status?.pic_infos);
-      walk(status?.retweeted_status, depth + 1);
+      collectPicInfos(status.pic_infos);
+      walk(status.retweeted_status, depth + 1);
     };
 
     walk(data, 0);
@@ -241,7 +354,7 @@ async function fetchWeiboImageUrlsById(id) {
 }
 
 async function getWeiboList(uid, limit = 10) {
-  const result = await runWeiboReader(limit);
+  const result = await fetchUserPosts(uid, Math.max(1, limit));
   return (result?.posts || [])
     .filter((post) => !post.isTop)
     .map((post) => ({
@@ -271,28 +384,22 @@ async function sendGroup(groupId, message) {
   await ctxRef.actions.call('send_msg', { message, message_type: 'group', group_id: String(groupId) }, ctxRef.adapterName, ctxRef.pluginManager.config);
 }
 
-function stripPrefix(text) {
-  const trimmed = String(text || '').trim();
-  if (!currentConfig.commandPrefix) return trimmed;
-  if (trimmed.startsWith(currentConfig.commandPrefix)) return trimmed.slice(currentConfig.commandPrefix.length).trim();
-  return trimmed;
-}
-
 async function handleList(ctx, event, uid) {
   if (!uid) return sendMsg(ctx, event, '请先在配置里设置 userId');
   const list = await getWeiboList(uid);
   if (!list.length) return sendMsg(ctx, event, '暂无微博数据');
-  const top = list.slice(0, 8).map((item, index) => `${index + 1}. ${toPlainText(item.text).slice(0, 40)}...`).join('\n');
+  const top = list.slice(0, 8).map((item, index) => `${index + 1}. ${String(item.text || '').slice(0, 40)}...`).join('\n');
   return sendMsg(ctx, event, `微博列表：\n${top}\n\n可发：球鳖 第N条微博`);
 }
 
 async function handleDetail(ctx, event, uid, idx) {
   if (!uid) return sendMsg(ctx, event, '请先在配置里设置 userId');
-  const list = await getWeiboList(uid);
+  const list = await getWeiboList(uid, Math.max(10, idx + 2));
   const item = list[idx - 1];
   if (!item) return sendMsg(ctx, event, '序号超出范围');
+
   const detail = await fetchWeiboStatusById(item.id || item.bid);
-  const text = detail ? formatWeiboBodyFromStatus(detail) : formatWeiboBody(toPlainText(item.text));
+  const text = detail ? formatWeiboBodyFromStatus(detail) : formatWeiboBody(String(item.text || ''));
   const ts = formatTs(item.createdAt);
   const url = String(item.shortUrl || '').trim();
   const base = `${ts ? `${ts}\n\n` : ''}${text}${url ? `\n${url}` : ''}`;
@@ -314,6 +421,7 @@ function startPoller() {
       const latest = list.find((post) => !post.isTop) || list[0];
       const latestId = String(latest.id || latest.mid || '');
       if (!latestId) return;
+
       const key = currentConfig.userId;
       const oldId = String(state.lastBlogIdByUser[key] || '');
       if (oldId === latestId) return;
@@ -322,7 +430,7 @@ function startPoller() {
       if (!oldId) return;
 
       const detail = await fetchWeiboStatusById(latest.id || latest.bid);
-      const text = detail ? formatWeiboBodyFromStatus(detail) : formatWeiboBody(toPlainText(latest.text));
+      const text = detail ? formatWeiboBodyFromStatus(detail) : formatWeiboBody(String(latest.text || ''));
       const ts = formatTs(latest.createdAt);
       const url = String(latest.shortUrl || '').trim();
       const base = `${ts ? `${ts}\n\n` : ''}${text}${url ? `\n${url}` : ''}`;
@@ -331,11 +439,11 @@ function startPoller() {
       const isForward = Boolean(detail?.retweeted_status || String(latest.text || '').includes('//@'));
       if (isForward) imageUrls = imageUrls.slice(0, 1);
       const images = imageUrls.map((img) => `[CQ:image,file=${cqEscape(img)}]`);
-      const msg = images.length ? `${base}\n${images.join('\n')}` : base;
+      const message = images.length ? `${base}\n${images.join('\n')}` : base;
 
       for (const [gid, enabled] of Object.entries(state.enabledGroups || {})) {
         if (!enabled) continue;
-        await sendGroup(gid, msg);
+        await sendGroup(gid, message);
       }
     } catch (error) {
       logger?.warn('weibo poll failed', error);
@@ -353,16 +461,13 @@ export const plugin_init = async (ctx) => {
     ctx.NapCatConfig.number('pollMinutes', '轮询间隔(分钟)', 240, '1-720（240=4小时）'),
     ctx.NapCatConfig.number('requestTimeoutMs', '请求超时(ms)', 10000, '1000-30000'),
     ctx.NapCatConfig.text('pushStatePath', '状态文件路径', 'data/weibo-push-state.json', ''),
-    ctx.NapCatConfig.text('weiboCookieFile', '微博Cookie文件', '', '可选，优先读取文件 cookie'),
-    ctx.NapCatConfig.text('weiboCookie', '微博Cookie字符串', '', '可直接粘贴 cookie'),
-    ctx.NapCatConfig.text('weiboReaderScript', 'weibo_reader.py路径', './scripts/weibo_reader.py', '默认使用仓库内置脚本'),
+    ctx.NapCatConfig.text('weiboCookieFile', '微博Cookie文件', '', '可选，提升抓取稳定性'),
+    ctx.NapCatConfig.text('weiboCookie', '微博Cookie字符串', '', '可直接粘贴 Cookie，可选'),
     ctx.NapCatConfig.text('adminQqList', '管理员QQ(逗号分隔)', '', '可控制开启/关闭推送')
   );
   try {
     if (ctx.configPath && fs.existsSync(ctx.configPath)) {
-      const cfg = JSON.parse(fs.readFileSync(ctx.configPath, 'utf-8'));
-      if (typeof cfg.adminQqList === 'string') cfg.adminQqList = cfg.adminQqList.split(',').map((item) => item.trim()).filter(Boolean);
-      currentConfig = sanitizeConfig(cfg);
+      currentConfig = sanitizeConfig(JSON.parse(fs.readFileSync(ctx.configPath, 'utf-8')));
     }
   } catch {}
   loadState();
@@ -409,18 +514,7 @@ export const plugin_onmessage = async (ctx, event) => {
 };
 
 export const plugin_get_config = async () => currentConfig;
-export const plugin_set_config = async (ctx, cfg) => {
-  if (typeof cfg.adminQqList === 'string') cfg.adminQqList = cfg.adminQqList.split(',').map((item) => item.trim()).filter(Boolean);
-  currentConfig = sanitizeConfig(cfg);
-  try {
-    const dir = path.dirname(ctx.configPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(ctx.configPath, JSON.stringify(currentConfig, null, 2), 'utf-8');
-  } catch {}
-  startPoller();
-};
 export const plugin_on_config_change = async (ctx, ui, key, value, cur) => {
-  if (typeof cur.adminQqList === 'string') cur.adminQqList = cur.adminQqList.split(',').map((item) => item.trim()).filter(Boolean);
   currentConfig = sanitizeConfig(cur);
   startPoller();
 };

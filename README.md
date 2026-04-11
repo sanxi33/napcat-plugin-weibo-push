@@ -1,119 +1,146 @@
 # napcat-plugin-weibo-push
 
-一个用于 NapCat 的微博查询与推送插件。支持在群聊中查看指定微博账号的最新内容，并可定时将新微博推送至已启用的群组。
+一个给 NapCat 用的微博查询与推送插件。它可以在群里查看某个微博账号最近的内容，也可以把新微博定时推送到启用的群。
 
-## 适用场景
+## 这份 README 默认把你当作
 
-- 监控特定微博账号的动态更新
-- 在群聊中快速获取最新微博列表
-- 自动将新发布的微博推送至 QQ 群
+- 已经装好了 NapCat，会导入插件 zip
+- 希望插件尽量是“导入后直接配好就能用”
+- 想监控固定微博账号，并把更新推到 QQ 群
 
-## 环境要求
+## 先说结论
 
-- 已部署 NapCat，了解如何导入插件包 (`.zip`)
-- 目标微博用户的数字 UID（非昵称）
-- （可选但推荐）微博 Cookie 以提升抓取稳定性
+当前版本已经改成了**纯 `.mjs` 实现**：
 
-## 安装步骤
+- 不需要额外装 Python
+- 不需要 `requests`
+- 不需要再依赖外部脚本
+
+普通用户的主路径应该是：
+
+1. 导入插件
+2. 填 `userId`
+3. 有条件的话补 Cookie
+4. 直接试 `微博`
+5. 能查出来后再开推送
+
+## 这个插件适合谁
+
+适合：
+
+- 想监控一个固定微博 UID
+- 想在群里快速查看最新微博
+- 想把新微博推送到 QQ 群
+
+不太适合：
+
+- 不知道目标微博 UID 的人
+- 想做复杂微博管理的人
+
+## 装之前要准备什么
+
+普通用户真正需要先准备的其实只有这 3 件事：
+
+1. 目标微博 UID
+2. 管理员 QQ
+3. 可选但强烈建议准备的 Cookie
+
+### 1. 目标微博 UID
+
+插件配置里要填的是 `userId`，不是昵称。
+
+### 2. 管理员 QQ
+
+`adminQqList` 需要写成逗号分隔字符串，例如：
+
+```text
+123456789,987654321
+```
+
+### 3. Cookie（强烈建议）
+
+虽然部分情况下不带 Cookie 也可能查到数据，但稳定性会差很多。能准备的话，建议至少准备其中一种：
+
+- `weiboCookieFile`
+- `weiboCookie`
+
+## 安装
 
 ### 1. 下载插件
 
-前往 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 页面，下载最新版本的 `napcat-plugin-weibo-push.zip`。
+从 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 下载：
+
+- `napcat-plugin-weibo-push.zip`
 
 ### 2. 导入 NapCat
 
-在 NapCat 的插件管理界面中导入 zip 文件，并启用插件。
+在 NapCat 插件管理里导入 zip，并启用插件。
 
-### 3. 最小化配置示例
+### 3. 先填最少配置
 
-首次使用时，建议使用以下基础配置模板：
+第一次建议先这样填：
 
 ```json
 {
   "enabled": true,
-  "commandPrefix": "/",
+  "commandPrefix": "球鳖",
   "userId": "1195242865",
   "requestTimeoutMs": 10000,
   "pollMinutes": 240,
   "adminQqList": "123456789",
   "pushStatePath": "data/weibo-push-state.json",
   "weiboCookieFile": "",
-  "weiboCookie": "",
-  "weiboReaderScript": "./scripts/weibo_reader.py"
+  "weiboCookie": ""
 }
 ```
 
-关键配置项说明：
+其中最关键的是：
 
-- `userId`：目标微博用户的数字 UID
-- `adminQqList`：管理员 QQ 号，多个使用英文逗号分隔
-- `weiboCookieFile` 或 `weiboCookie`：填写 Cookie 可显著提高数据抓取稳定性
+- `userId`
+- `adminQqList`
+- `weiboCookieFile` 或 `weiboCookie`
 
-> 注：`weiboReaderScript` 路径保持默认即可，无需修改。
+## 怎么用
 
-## 使用方法
+查看微博列表：
 
-### 查询微博
+- `球鳖 微博`
+- `球鳖 微博列表`
+- `球鳖 最新微博`
 
-```
-/微博
-/微博列表
-/最新微博
-/第1条微博
-```
+查看第 N 条：
 
-### 群推送控制（仅群管理员可用）
+- `球鳖 第1条微博`
 
-```
-/开启微博推送
-/关闭微博推送
-```
+群管理员控制推送：
 
-命令前缀取决于配置中的 `commandPrefix` 设置。
+- `球鳖 开启微博推送`
+- `球鳖 关闭微博推送`
 
-## 验证安装
+## 第一次怎么确认自己装好了
 
-按以下顺序测试插件是否正常工作：
+建议按这个顺序测：
 
-1. 配置正确的 `userId`
-2. 发送命令 `/微博` 检查是否返回微博列表
-3. 发送命令 `/第1条微博` 查看详情内容
-4. 在群内发送 `/开启微博推送` 启用定时推送
+1. 先配好 `userId`
+2. 在聊天里发 `球鳖 微博`
+3. 能返回列表后，再去试 `球鳖 第1条微博`
+4. 最后在群里发 `球鳖 开启微博推送`
 
-若步骤 2 成功返回列表，则说明插件核心功能运行正常。
+如果你已经能走到第 2 步并看到结果，说明插件主路径就是通的。
 
-## 快捷安装链接
+## 一键跳到 NapCat WebUI 安装页
 
-NapCat 版本 ≥ `4.15.19` 时，可点击下方按钮快速跳转至插件安装页面：
+如果你的 NapCat 版本是 `4.15.19` 或更高，可以直接点下面按钮跳到插件安装界面：
 
 <a href="https://napneko.github.io/napcat-plugin-index?pluginId=napcat-plugin-weibo-push" target="_blank">
   <img src="https://github.com/NapNeko/napcat-plugin-index/blob/pages/button.png?raw=true" alt="在 NapCat WebUI 中打开" width="170">
 </a>
 
-## 故障排查
-
-插件的微博抓取功能依赖仓库自带的 `scripts/weibo_reader.py` 脚本，内部会执行 `py -3 scripts/weibo_reader.py` 命令。
-
-若遇到类似以下报错：
-
-- `'py' 不是内部或外部命令`
-- `ModuleNotFoundError: No module named 'requests'`
-- `weibo_reader_failed`
-
-请执行以下排查步骤：
-
-1. 确认系统可执行 `py -3` 命令
-2. 安装所需依赖：
-   ```bash
-   py -3 -m pip install requests
-   ```
-3. 重启 NapCat 并重新启用插件
-
 ## 已知限制
 
-- 依赖微博页面及接口的可访问性
-- 无有效 Cookie 时，部分微博账号内容可能无法正常抓取
-- 本插件仅负责内容查询与推送，不涉及微博账号管理或互动操作
+- 插件依赖微博页面和接口可访问性
+- 没有有效 Cookie 时，部分账号抓取可能受限
+- 上游接口结构变化时，插件可能需要更新
 
 ## License
 
