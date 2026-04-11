@@ -14,8 +14,8 @@ permissions:
   contents: write
 
 env:
-  INDEX_REPO: NapNeko/napcat-plugin-index
-  INDEX_REPO_NAME: napcat-plugin-index
+  INDEX_REPO: HolyFoxTeam/napcat-plugin-community-index
+  INDEX_REPO_NAME: napcat-plugin-community-index
   INDEX_BRANCH: main
   INDEX_FILE: plugins.v4.json
 
