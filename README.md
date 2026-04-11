@@ -10,13 +10,19 @@
 
 ## 先说结论
 
-对于大多数普通用户，这个插件应该按下面这条路径理解：
+当前版本已经改成了**纯 `.mjs` 实现**：
 
-1. 先导入插件
-2. 先填 `userId`
-3. 有条件的话再补 Cookie
-4. 先直接试 `微博` / `第N条微博`
-5. 只有真的报错了，再去看 Python 相关排查
+- 不需要额外装 Python
+- 不需要 `requests`
+- 不需要再依赖外部脚本
+
+普通用户的主路径应该是：
+
+1. 导入插件
+2. 填 `userId`
+3. 有条件的话补 Cookie
+4. 直接试 `微博`
+5. 能查出来后再开推送
 
 ## 这个插件适合谁
 
@@ -84,8 +90,7 @@
   "adminQqList": "123456789",
   "pushStatePath": "data/weibo-push-state.json",
   "weiboCookieFile": "",
-  "weiboCookie": "",
-  "weiboReaderScript": "./scripts/weibo_reader.py"
+  "weiboCookie": ""
 }
 ```
 
@@ -94,8 +99,6 @@
 - `userId`
 - `adminQqList`
 - `weiboCookieFile` 或 `weiboCookie`
-
-如果你只是第一次装，**先不要管 `weiboReaderScript`**，保持默认即可。
 
 ## 怎么用
 
@@ -133,38 +136,11 @@
   <img src="https://github.com/NapNeko/napcat-plugin-index/blob/pages/button.png?raw=true" alt="在 NapCat WebUI 中打开" width="170">
 </a>
 
-## 如果真的启动失败，再看这里
-
-当前版本的插件实现里，抓取逻辑是通过仓库自带的 `scripts/weibo_reader.py` 跑起来的，并且代码里是直接调用：
-
-```text
-py -3 scripts/weibo_reader.py
-```
-
-所以如果你在自己的环境里真的遇到下面这类报错：
-
-- 找不到 `py`
-- 找不到 `requests`
-- `weibo_reader_failed`
-
-再按下面排查：
-
-1. 确认环境里能执行 `py -3`
-2. 安装依赖：
-
-```text
-py -3 -m pip install requests
-```
-
-3. 再重新启用插件测试
-
-这部分更像“故障排查”，不是普通用户的主安装步骤。
-
 ## 已知限制
 
 - 插件依赖微博页面和接口可访问性
 - 没有有效 Cookie 时，部分账号抓取可能受限
-- 当前实现内部确实会调用 Python 脚本；只是普通用户不一定需要一开始就手工处理这件事
+- 上游接口结构变化时，插件可能需要更新
 
 ## License
 

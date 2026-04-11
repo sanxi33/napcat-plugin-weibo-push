@@ -53,13 +53,10 @@ jobs:
           PLUGIN_NAME: napcat-plugin-weibo-push
         shell: bash
         run: |
-          mkdir -p release/scripts
           cp index.mjs release/
           cp package.json release/
-          cp requirements.txt release/
-          cp scripts/weibo_reader.py release/scripts/
           cd release
-          zip -r ../${PLUGIN_NAME}.zip index.mjs package.json requirements.txt scripts
+          zip -r ../${PLUGIN_NAME}.zip index.mjs package.json
 
       - name: Verify zip contents
         run: unzip -l napcat-plugin-weibo-push.zip
