@@ -1,6 +1,6 @@
 {
   "enabled": true,
-  "commandPrefix": "球鳖",
+  "commandPrefix": "/",
   "userId": "",
   "requestTimeoutMs": 10000,
   "pollMinutes": 240,
