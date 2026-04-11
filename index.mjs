@@ -11,7 +11,7 @@ const DESKTOP_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 
 const DEFAULT_CONFIG = {
   enabled: true,
-  commandPrefix: '球鳖',
+  commandPrefix: '/',
   userId: '',
   requestTimeoutMs: 10000,
   pollMinutes: 240,
@@ -389,7 +389,7 @@ async function handleList(ctx, event, uid) {
   const list = await getWeiboList(uid);
   if (!list.length) return sendMsg(ctx, event, '暂无微博数据');
   const top = list.slice(0, 8).map((item, index) => `${index + 1}. ${String(item.text || '').slice(0, 40)}...`).join('\n');
-  return sendMsg(ctx, event, `微博列表：\n${top}\n\n可发：球鳖 第N条微博`);
+  return sendMsg(ctx, event, `微博列表：\n${top}\n\n可发：/第N条微博`);
 }
 
 async function handleDetail(ctx, event, uid, idx) {
@@ -456,7 +456,7 @@ export const plugin_init = async (ctx) => {
   logger = ctx.logger;
   plugin_config_ui = ctx.NapCatConfig.combine(
     ctx.NapCatConfig.boolean('enabled', '启用插件', true, '总开关'),
-    ctx.NapCatConfig.text('commandPrefix', '命令前缀', '球鳖', ''),
+    ctx.NapCatConfig.text('commandPrefix', '命令前缀', '/', ''),
     ctx.NapCatConfig.text('userId', '微博UID', '', '例如 1195242865'),
     ctx.NapCatConfig.number('pollMinutes', '轮询间隔(分钟)', 240, '1-720（240=4小时）'),
     ctx.NapCatConfig.number('requestTimeoutMs', '请求超时(ms)', 10000, '1000-30000'),

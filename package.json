@@ -1,7 +1,7 @@
 {
   "name": "napcat-plugin-weibo-push",
   "plugin": "weibo-push",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "main": "index.mjs",
   "description": "NapCat 微博查询与推送插件",
