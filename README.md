@@ -1,84 +1,39 @@
 # napcat-plugin-weibo-push
 
-一个给 NapCat 用的微博查询与推送插件。它可以在群里查看某个微博账号最近的内容，也可以把新微博定时推送到启用的群。
+一个为 NapCat 设计的微博查询与推送插件。它可以在群里查看某个微博账号最近的内容，也可以把新微博定时推送到启用的群。
 
-## 这份 README 默认把你当作
+## 适用场景
 
-- 已经装好了 NapCat，会导入插件 zip
-- 希望插件尽量是“导入后直接配好就能用”
-- 想监控固定微博账号，并把更新推到 QQ 群
+- 监控固定微博账号的动态更新
+- 在群聊中快速查看最新微博
+- 将新微博自动推送到 QQ 群
 
-## 先说结论
+## 环境要求
 
-当前版本已经改成了**纯 `.mjs` 实现**：
+- 已部署 NapCat，并了解如何导入插件包 (`.zip`)
+- 知道目标微博账号的数字 UID
+- 无需额外安装 Python 或 `requests`
 
-- 不需要额外装 Python
-- 不需要 `requests`
-- 不需要再依赖外部脚本
-
-普通用户的主路径应该是：
-
-1. 导入插件
-2. 填 `userId`
-3. 有条件的话补 Cookie
-4. 直接试 `微博`
-5. 能查出来后再开推送
-
-## 这个插件适合谁
-
-适合：
-
-- 想监控一个固定微博 UID
-- 想在群里快速查看最新微博
-- 想把新微博推送到 QQ 群
-
-不太适合：
-
-- 不知道目标微博 UID 的人
-- 想做复杂微博管理的人
-
-## 装之前要准备什么
-
-普通用户真正需要先准备的其实只有这 3 件事：
-
-1. 目标微博 UID
-2. 管理员 QQ
-3. 可选但强烈建议准备的 Cookie
-
-### 1. 目标微博 UID
-
-插件配置里要填的是 `userId`，不是昵称。
-
-### 2. 管理员 QQ
-
-`adminQqList` 需要写成逗号分隔字符串，例如：
-
-```text
-123456789,987654321
-```
-
-### 3. Cookie（强烈建议）
-
-虽然部分情况下不带 Cookie 也可能查到数据，但稳定性会差很多。能准备的话，建议至少准备其中一种：
+可选：
 
 - `weiboCookieFile`
 - `weiboCookie`
 
-## 安装
+如果不带 Cookie，某些账号的抓取稳定性会差一些。
+
+## 安装步骤
 
 ### 1. 下载插件
 
-从 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 下载：
-
-- `napcat-plugin-weibo-push.zip`
+前往 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 页面，下载最新版本的 `napcat-plugin-weibo-push.zip`。
 
 ### 2. 导入 NapCat
 
-在 NapCat 插件管理里导入 zip，并启用插件。
+在 NapCat 的插件管理界面中导入 zip 文件，并启用插件。
 
-### 3. 先填最少配置
+### 3. 默认配置
 
-第一次建议先这样填：
+插件首次运行建议先使用以下配置：
 
 ```json
 {
@@ -94,43 +49,41 @@
 }
 ```
 
-其中最关键的是：
+通常最关键的是：
 
 - `userId`
 - `adminQqList`
-- `weiboCookieFile` 或 `weiboCookie`
 
-## 怎么用
+## 使用方法
 
 查看微博列表：
 
-- `球鳖 微博`
-- `球鳖 微博列表`
-- `球鳖 最新微博`
+```text
+球鳖 微博
+球鳖 微博列表
+球鳖 最新微博
+球鳖 第1条微博
+```
 
-查看第 N 条：
+控制群推送：
 
-- `球鳖 第1条微博`
+```text
+球鳖 开启微博推送
+球鳖 关闭微博推送
+```
 
-群管理员控制推送：
+## 验证安装
 
-- `球鳖 开启微博推送`
-- `球鳖 关闭微博推送`
-
-## 第一次怎么确认自己装好了
-
-建议按这个顺序测：
+建议按以下顺序测试：
 
 1. 先配好 `userId`
 2. 在聊天里发 `球鳖 微博`
 3. 能返回列表后，再去试 `球鳖 第1条微博`
 4. 最后在群里发 `球鳖 开启微博推送`
 
-如果你已经能走到第 2 步并看到结果，说明插件主路径就是通的。
+## 快捷安装链接
 
-## 一键跳到 NapCat WebUI 安装页
-
-如果你的 NapCat 版本是 `4.15.19` 或更高，可以直接点下面按钮跳到插件安装界面：
+NapCat 版本 ≥ `4.15.19` 时，可点击下方按钮快速跳转至插件安装页面：
 
 <a href="https://napneko.github.io/napcat-plugin-index?pluginId=napcat-plugin-weibo-push" target="_blank">
   <img src="https://github.com/NapNeko/napcat-plugin-index/blob/pages/button.png?raw=true" alt="在 NapCat WebUI 中打开" width="170">
