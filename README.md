@@ -1,39 +1,25 @@
 # napcat-plugin-weibo-push
 
-一个为 NapCat 设计的微博查询与推送插件。它可以在群里查看某个微博账号最近的内容，也可以把新微博定时推送到启用的群。
+在 QQ 群里直接查微博，还能自动推送新微博到群聊。不用打开微博 App，也不用爬虫配环境。
 
-## 适用场景
+## 下载安装
 
-- 监控固定微博账号的动态更新
-- 在群聊中快速查看最新微博
-- 将新微博自动推送到 QQ 群
+去 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 下载最新的 `napcat-plugin-weibo-push.zip`，然后在 NapCat 的插件管理里导入并启用就行。
 
-## 环境要求
+NapCat 版本 >= `4.15.19` 的，点这个按钮直接跳转安装页：
 
-- 已部署 NapCat，并了解如何导入插件包 (`.zip`)
-- 知道目标微博账号的数字 UID
-- 无需额外安装 Python 或 `requests`
+<a href="https://napneko.github.io/napcat-plugin-index?pluginId=napcat-plugin-weibo-push" target="_blank">
+  <img src="https://github.com/NapNeko/napcat-plugin-index/blob/pages/button.png?raw=true" alt="在 NapCat WebUI 中打开" width="170">
+</a>
 
-可选：
+## 配置
 
-- `weiboCookieFile`
-- `weiboCookie`
+第一次装好后，先填这两个最重要的字段：
 
-如果不带 Cookie，某些账号的抓取稳定性会差一些。
+- `userId` —— 目标微博账号的数字 UID（比如 `1195242865`）
+- `adminQqList` —— 你的 QQ 号，只有这个号能控制开关
 
-## 安装步骤
-
-### 1. 下载插件
-
-前往 [Releases](https://github.com/sanxi33/napcat-plugin-weibo-push/releases) 页面，下载最新版本的 `napcat-plugin-weibo-push.zip`。
-
-### 2. 导入 NapCat
-
-在 NapCat 的插件管理界面中导入 zip 文件，并启用插件。
-
-### 3. 默认配置
-
-插件首次运行建议先使用以下配置：
+完整默认配置参考：
 
 ```json
 {
@@ -49,51 +35,33 @@
 }
 ```
 
-通常最关键的是：
+`weiboCookie` 和 `weiboCookieFile` 是可选的。不带 Cookie 也能用，但某些账号抓取稳定性会差一些。
 
-- `userId`
-- `adminQqList`
+## 命令
 
-## 使用方法
+查微博：
 
-查看微博列表：
-
-```text
+```
 /微博
 /微博列表
 /最新微博
 /第1条微博
 ```
 
-控制群推送：
+控制推送：
 
-```text
+```
 /开启微博推送
 /关闭微博推送
 ```
 
-## 验证安装
+简单说下顺序：先配好 `userId`，发个 `/微博` 看看能不能拉到列表，能返回了再试 `/第1条微博`，最后在群里开推送就行。
 
-建议按以下顺序测试：
+## 注意
 
-1. 先配好 `userId`
-2. 在聊天里发 `/微博`
-3. 能返回列表后，再去试 `/第1条微博`
-4. 最后在群里发 `/开启微博推送`
-
-## 快捷安装链接
-
-NapCat 版本 ≥ `4.15.19` 时，可点击下方按钮快速跳转至插件安装页面：
-
-<a href="https://napneko.github.io/napcat-plugin-index?pluginId=napcat-plugin-weibo-push" target="_blank">
-  <img src="https://github.com/NapNeko/napcat-plugin-index/blob/pages/button.png?raw=true" alt="在 NapCat WebUI 中打开" width="170">
-</a>
-
-## 已知限制
-
-- 插件依赖微博页面和接口可访问性
-- 没有有效 Cookie 时，部分账号抓取可能受限
-- 上游接口结构变化时，插件可能需要更新
+- 插件走的是微博页面和公开接口，不是官方开发者 API
+- 没有有效 Cookie 时部分账号可能受限
+- 上游接口结构改了的话，插件得跟着更新
 
 ## License
 
